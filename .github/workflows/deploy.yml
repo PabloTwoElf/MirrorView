@@ -32,6 +32,8 @@ jobs:
         run: npm install
 
       - name: Build MirrorView
+        env:
+          VITE_SIGNAL_URL: ${{ vars.VITE_SIGNAL_URL || secrets.VITE_SIGNAL_URL || '' }}
         run: npm run build
 
       - name: Configure GitHub Pages

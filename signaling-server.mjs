@@ -2,7 +2,7 @@ import http from "node:http";
 import os from "node:os";
 import { WebSocketServer } from "ws";
 
-const SIGNALING_PORT = Number(process.env.SIGNALING_PORT || 5174);
+const SIGNALING_PORT = Number(process.env.PORT || process.env.SIGNALING_PORT || 5174);
 
 const rooms = new Map();
 
@@ -55,7 +55,13 @@ const server = http.createServer((req, res) => {
     const basePath = requestUrl.searchParams.get("basePath") || "/";
     const addresses = getLanAddresses();
     const appUrls = addresses.map((address) => new URL(basePath, `http://${address}:${appPort}`).toString());
-    return sendJson(res, { addresses, appUrls, signaling: `ws://${req.headers.host}` });
+    const forwardedProto = String(req.headers["x-forwarded-proto"] || "http").split(",")[0]?.trim();
+    const signalingProtocol = forwardedProto === "https" ? "wss" : "ws";
+    return sendJson(res, { addresses, appUrls, signaling: `${signalingProtocol}://${req.headers.host}` });
+  }
+
+  if (req.method === "GET" && requestUrl.pathname === "/health") {
+    return sendJson(res, { status: "ok" });
   }
 
   sendJson(res, { error: "Not found" }, 404);

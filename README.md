@@ -1,123 +1,135 @@
 # MirrorView
 
-## ES — Prototipo de screen sharing por QR + WebRTC
+## ES — Despliegue público (GitHub Pages + señalización en Render)
 
-MirrorView ahora prioriza el flujo **receptor/emisor**:
+MirrorView usa WebRTC para reflejar pantalla entre `receiver` y `sender`.
 
-- **Receptor (host, PC/tablet):** `?role=receiver&session=...`
-- **Emisor (iPhone/Android):** `?role=sender&session=...`
+> GitHub Pages **no puede ejecutar WebSockets ni procesos Node.js**.  
+> Por eso, el servidor de señalización (`signaling-server.mjs`) debe desplegarse aparte (por ejemplo en Render).
 
-El receptor genera un QR con la URL del emisor para esa sesión. El emisor muestra un botón grande **"Compartir mi pantalla"** y solicita permiso del sistema usando `navigator.mediaDevices.getDisplayMedia({ video: true, audio: false })`.
-
-### Instalación
+### 1) Instalar y ejecutar en local
 
 ```bash
 npm install
-```
-
-### Desarrollo local (app + señalización)
-
-```bash
 npm run dev
 ```
 
-Este comando inicia:
+Esto levanta:
 
-- Vite en `http://<host>:5173/MirrorView/`
-- Servidor de señalización WebRTC en `ws://<host>:5174`
+- App Vite en `http://<host>:5173/MirrorView/`
+- Señalización en `ws://<host>:5174`
 
-### Flujo exacto
+### 2) Desplegar señalización en Render
 
-1. Abre en tu computadora/tablet: `http://localhost:5173/MirrorView/?role=receiver`
-2. Se generará un `session` y un QR.
-3. Escanea ese QR desde el iPhone/Android.
-4. En el teléfono abre la vista emisor y toca **"Compartir mi pantalla"**.
-5. Acepta los permisos del sistema.
-6. El receptor mostrará el video remoto en vivo.
+Este repo incluye `render.yaml` con un servicio web Node:
 
-### Requisitos y limitaciones honestas
+- `buildCommand: npm install`
+- `startCommand: npm run dev:signal`
+- `healthCheckPath: /health`
 
-- Ambos dispositivos deben estar en la misma red local para la demo LAN.
-- WebRTC necesita señalización (offer/answer/ICE). **GitHub Pages es estático y no incluye señalización**.
-- Para conexiones fuera de LAN normalmente necesitas HTTPS + TURN/STUN adecuados.
-- iOS Safari puede no soportar captura completa de pantalla en todos los casos web. Para compartir pantalla real de iPhone de forma robusta en producción se requiere una app nativa con **ReplayKit Broadcast Extension** (u otra capacidad iOS equivalente).
+Pasos:
 
-### GitHub Pages
+1. En Render, crea un **Blueprint** apuntando a este repositorio.
+2. Conecta la rama deseada y crea el servicio.
+3. Cuando quede activo, copia la URL pública del servicio.
+4. Convierte esa URL HTTPS a WSS para WebRTC:
+   - `https://mi-servicio.onrender.com` → `wss://mi-servicio.onrender.com`
 
-- Base path correcto del repo: `/MirrorView/`
-- URL pública receptor: `https://pablotwoelf.github.io/MirrorView/?role=receiver`
+### 3) Configurar `VITE_SIGNAL_URL` en GitHub
 
-En Pages verás la UI y el QR, pero sin servidor de señalización externo no habrá conexión WebRTC. Puedes inyectar uno con:
+En GitHub: **Settings → Secrets and variables → Actions → Variables**.
 
-- `?signal=wss://tu-servidor` (en receptor/emisor)
+Crea la variable de repositorio:
 
-### Build
+- Nombre: `VITE_SIGNAL_URL`
+- Valor: `wss://<tu-servicio-real>.onrender.com`
 
-```bash
-npm run build
-```
+El workflow de Pages la consume de forma opcional:
 
-### Ruta de fallback
+- `vars.VITE_SIGNAL_URL` (preferido)
+- o `secrets.VITE_SIGNAL_URL`
+- si no existe, el build sigue funcionando (sin señalización pública configurada)
 
-Se conserva una ruta visual legacy:
+### 4) Redeploy de Pages
 
-- `?role=preview`
+1. Haz push de cambios (o ejecuta workflow manualmente).
+2. Espera a que termine `Deploy MirrorView`.
+3. Abre:
+   - Receptor: `https://pablotwoelf.github.io/MirrorView/?role=receiver`
+
+### 5) Probar QR con señalización real
+
+1. Abre el receptor.
+2. Escanea el QR desde el teléfono.
+3. En `sender`, pulsa **Compartir mi pantalla**.
+4. Verifica que el enlace/QR incluya `signal=wss://...` junto con `role` y `session`.
+
+Si `VITE_SIGNAL_URL` no está configurada, la app muestra un mensaje de configuración en español y no simula una URL falsa.
 
 ---
 
-## EN — QR + WebRTC screen-sharing prototype
+## EN — Public deployment (GitHub Pages + Render signaling)
 
-MirrorView now prioritizes a **receiver/sender** flow:
+MirrorView uses WebRTC between `receiver` and `sender`.
 
-- **Receiver (host, desktop/tablet):** `?role=receiver&session=...`
-- **Sender (iPhone/Android):** `?role=sender&session=...`
+> GitHub Pages **cannot run WebSockets or Node.js processes**.  
+> The signaling server (`signaling-server.mjs`) must be deployed separately (for example on Render).
 
-The receiver generates a QR for the sender URL in that session. The sender shows a large **"Compartir mi pantalla"** button and requests permission through `getDisplayMedia({ video: true, audio: false })`.
-
-### Install
+### 1) Install and run locally
 
 ```bash
 npm install
-```
-
-### Local run (app + signaling)
-
-```bash
 npm run dev
 ```
 
 This starts:
 
 - Vite app on `http://<host>:5173/MirrorView/`
-- WebRTC signaling on `ws://<host>:5174`
+- Signaling on `ws://<host>:5174`
 
-### Exact flow
+### 2) Deploy signaling on Render
 
-1. Open receiver on desktop/tablet: `http://localhost:5173/MirrorView/?role=receiver`
-2. A session + QR are created.
-3. Scan the QR with iPhone/Android.
-4. On the phone, tap **"Compartir mi pantalla"**.
-5. Accept OS permissions.
-6. Receiver displays live remote video.
+This repository includes `render.yaml` with a Node web service:
 
-### Requirements and honest limitations
+- `buildCommand: npm install`
+- `startCommand: npm run dev:signal`
+- `healthCheckPath: /health`
 
-- Keep both devices on the same network for the LAN demo.
-- WebRTC requires signaling (offer/answer/ICE). **GitHub Pages is static and does not host signaling**.
-- For non-LAN scenarios, proper HTTPS + STUN/TURN are usually required.
-- iOS Safari may not support full screen capture in all web contexts. Reliable real iPhone screen sharing generally requires a native app with **ReplayKit Broadcast Extension** (or equivalent iOS capability).
+Steps:
 
-### GitHub Pages
+1. In Render, create a **Blueprint** from this repository.
+2. Connect the target branch and create the service.
+3. Once live, copy the public service URL.
+4. Convert HTTPS URL to WSS for WebRTC:
+   - `https://my-service.onrender.com` → `wss://my-service.onrender.com`
 
-- Repo base path is `/MirrorView/`
-- Public receiver URL: `https://pablotwoelf.github.io/MirrorView/?role=receiver`
+### 3) Configure `VITE_SIGNAL_URL` in GitHub
 
-On Pages, UI works but WebRTC will stay disconnected unless you provide an external signaling server:
+In GitHub: **Settings → Secrets and variables → Actions → Variables**.
 
-- `?signal=wss://your-server`
+Create repository variable:
 
-### Build
+- Name: `VITE_SIGNAL_URL`
+- Value: `wss://<your-real-service>.onrender.com`
 
-```bash
-npm run build
-```
+Pages workflow reads it optionally:
+
+- `vars.VITE_SIGNAL_URL` (preferred)
+- or `secrets.VITE_SIGNAL_URL`
+- if absent, build still succeeds (but public signaling is not configured)
+
+### 4) Redeploy Pages
+
+1. Push changes (or run workflow manually).
+2. Wait for `Deploy MirrorView` to finish.
+3. Open:
+   - Receiver: `https://pablotwoelf.github.io/MirrorView/?role=receiver`
+
+### 5) Validate receiver QR flow
+
+1. Open receiver.
+2. Scan QR from phone.
+3. Tap **Compartir mi pantalla** on sender.
+4. Confirm URL/QR contains `signal=wss://...` plus `role` and `session`.
+
+If `VITE_SIGNAL_URL` is not set, the app shows a clear Spanish setup message and does not hardcode a fake signaling domain.

@@ -29,9 +29,11 @@ const queryRole = QUERY.get("role");
 const role: Role = queryRole === "sender" || queryRole === "receiver" || queryRole === "preview" ? queryRole : "receiver";
 
 const isGithubPages = window.location.hostname.endsWith("github.io");
-const requestedSignalUrl = QUERY.get("signal")?.trim();
+const requestedSignalUrl = QUERY.get("signal")?.trim() || null;
+const configuredSignalUrl = import.meta.env.VITE_SIGNAL_URL?.trim() || null;
 const defaultSignalUrl = isGithubPages ? null : `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.hostname}:5174`;
-const signalingUrl = requestedSignalUrl || defaultSignalUrl;
+const signalingUrl = requestedSignalUrl || configuredSignalUrl || defaultSignalUrl;
+const qrSignalUrl = requestedSignalUrl || configuredSignalUrl;
 
 function ensureSessionInQuery(currentRole: Role): string {
   const params = new URLSearchParams(window.location.search);
@@ -48,10 +50,13 @@ function ensureSessionInQuery(currentRole: Role): string {
   return session;
 }
 
-function buildAppUrl(origin: string, nextRole: "sender" | "receiver", session: string): string {
+function buildAppUrl(origin: string, nextRole: "sender" | "receiver", session: string, signal: string | null): string {
   const url = new URL(import.meta.env.BASE_URL, origin);
   url.searchParams.set("role", nextRole);
   url.searchParams.set("session", session);
+  if (signal) {
+    url.searchParams.set("signal", signal);
+  }
   return url.toString();
 }
 
@@ -72,7 +77,7 @@ function ReceiverView({ session }: { session: string }) {
   const [status, setStatus] = useState("Preparando receptor...");
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-  const [senderUrl, setSenderUrl] = useState(buildAppUrl(window.location.origin, "sender", session));
+  const [senderUrl, setSenderUrl] = useState(buildAppUrl(window.location.origin, "sender", session, qrSignalUrl));
   const [reconnectTick, setReconnectTick] = useState(0);
 
   const wsRef = useRef<WebSocket | null>(null);
@@ -83,7 +88,7 @@ function ReceiverView({ session }: { session: string }) {
   useEffect(() => {
     if (!signalingUrl) {
       setStatus("Sin servidor de señalización: GitHub Pages es estático.");
-      setError("Configura un servidor de señalización y agrega ?signal=wss://tu-servidor para habilitar WebRTC.");
+      setError("Configura VITE_SIGNAL_URL con la URL wss:// real de señalización y vuelve a desplegar GitHub Pages.");
       return;
     }
 
@@ -98,12 +103,12 @@ function ReceiverView({ session }: { session: string }) {
         if (cancelled) return;
         const firstUrl = info.appUrls[0];
         if (firstUrl) {
-          setSenderUrl(buildAppUrl(firstUrl, "sender", session));
+          setSenderUrl(buildAppUrl(firstUrl, "sender", session, qrSignalUrl));
         }
       })
       .catch(() => {
         if (!cancelled) {
-          setSenderUrl(buildAppUrl(window.location.origin, "sender", session));
+          setSenderUrl(buildAppUrl(window.location.origin, "sender", session, qrSignalUrl));
         }
       });
 
@@ -314,7 +319,7 @@ function SenderView({ session }: { session: string }) {
 
   useEffect(() => {
     if (!signalingUrl) {
-      setError("No hay señalización disponible en este entorno estático. Usa `npm run dev` o agrega ?signal=wss://tu-servidor.");
+      setError("No hay señalización disponible en este entorno estático. Configura VITE_SIGNAL_URL con una URL wss:// real o usa `npm run dev`.");
       setStatus("Sin señalización.");
       return;
     }
