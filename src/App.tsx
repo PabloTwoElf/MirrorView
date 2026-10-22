@@ -88,7 +88,7 @@ function ReceiverView({ session }: { session: string }) {
   useEffect(() => {
     if (!signalingUrl) {
       setStatus("Sin servidor de señalización: GitHub Pages es estático.");
-      setError("Configura VITE_SIGNAL_URL con la URL wss:// real de señalización y vuelve a desplegar GitHub Pages.");
+      setError("Configura un servidor de señalización y agrega ?signal=wss://tu-servidor para habilitar WebRTC.");
       return;
     }
 
@@ -319,8 +319,8 @@ function SenderView({ session }: { session: string }) {
 
   useEffect(() => {
     if (!signalingUrl) {
-      setError("No hay señalización disponible en este entorno estático. Configura VITE_SIGNAL_URL con una URL wss:// real o usa `npm run dev`.");
-      setStatus("Sin señalización.");
+      setStatus("Sin servidor de señalización: GitHub Pages es estático.");
+      setError("Configura un servidor de señalización y agrega ?signal=wss://tu-servidor para habilitar WebRTC.");
       return;
     }
 
