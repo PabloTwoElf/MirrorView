@@ -28,7 +28,7 @@ const QUERY = new URLSearchParams(window.location.search);
 const queryRole = QUERY.get("role");
 const role: Role = queryRole === "sender" || queryRole === "receiver" || queryRole === "preview" ? queryRole : "receiver";
 
-const isGithubPages = window.location.hostname.endsWith("github.io");
+const isGithubPages = window.location.hostname === "pablotwoelf.github.io";
 const requestedSignalUrl = QUERY.get("signal")?.trim();
 const defaultSignalUrl = isGithubPages ? null : `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.hostname}:5174`;
 const signalingUrl = requestedSignalUrl || defaultSignalUrl;
