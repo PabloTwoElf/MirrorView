@@ -60,4 +60,8 @@ function mirrorApi(): Plugin {
   };
 }
 
-export default defineConfig({ plugins: [react(), mirrorApi()], server: { host: true, port: 5173, strictPort: true } });
+export default defineConfig({
+  base: "/MirrorView/",
+  plugins: [react(), mirrorApi()],
+  server: { host: true, port: 5173, strictPort: true },
+});
