@@ -21,9 +21,8 @@ const initialState: MirrorState = {
   updatedAt: Date.now(),
 };
 
-const basePath = import.meta.env.BASE_URL || "/";
-
 function publicViewerUrl() {
+  const basePath = window.location.hostname.endsWith("github.io") ? "/MirrorView/" : "/";
   return new URL("?mode=viewer", new URL(basePath, window.location.origin)).toString();
 }
 
